@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
     }
 }
 
-fun decodeBencode(bencodedString: String): String {
+fun decodeBencode(bencodedString: String): Any {
     when {
         Character.isDigit(bencodedString[0]) -> {
             val firstColonIndex = bencodedString.indexOfFirst { it == ':' }
@@ -26,7 +26,7 @@ fun decodeBencode(bencodedString: String): String {
         }
         bencodedString[0] == 'i' -> {
             val length = bencodedString.length
-            return bencodedString.substring(1, length - 1)
+            return Integer.parseInt(bencodedString.substring(1, length - 1))
         }
         else -> TODO("Only strings are supported at the moment")
     }

@@ -1,5 +1,6 @@
 import java.io.*
 import java.math.BigDecimal
+import java.nio.ByteBuffer
 
 
 class BencodeInputStream(`in`: InputStream) :
@@ -30,6 +31,11 @@ class BencodeInputStream(`in`: InputStream) :
 
     fun readString(): String {
         return String(readStringBytesInternal())
+    }
+
+    @Throws(IOException::class)
+    fun readStringBytes(): ByteBuffer {
+        return ByteBuffer.wrap(readStringBytesInternal())
     }
 
     private fun readStringBytesInternal(): ByteArray {
@@ -98,7 +104,7 @@ class BencodeInputStream(`in`: InputStream) :
 
         val type = typeForToken(token)
 
-        if (type === Type.STRING) return readString()
+        if (type === Type.STRING) return readStringBytes()
         if (type === Type.NUMBER) return readNumber()
         if (type === Type.LIST) return readList()
         if (type === Type.DICTIONARY) return readDictionary()

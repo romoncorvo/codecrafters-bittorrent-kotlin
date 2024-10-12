@@ -1,11 +1,12 @@
+import com.google.common.hash.Hashing
 import com.google.gson.Gson
 import java.io.File
-
-
-// import com.dampcake.bencode.Bencode; - available if you need it!
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 val gson = Gson()
 
+@OptIn(ExperimentalStdlibApi::class)
 fun main(args: Array<String>) {
     when (val command = args[0]) {
         "decode" -> {
@@ -17,15 +18,21 @@ fun main(args: Array<String>) {
 
         "info" -> {
             val fileName = args[1]
-            val file = File(fileName).inputStream().readBytes()
+//            val file = File(fileName).readText(Charsets.UTF_8)
+//            val decoded = decode(file) as Map<*, *>
 
+            val file = File(fileName).inputStream().readBytes()
             val bencode = Bencode()
             val type = bencode.type(file)
             val decoded = bencode.decode(file, type) as Map<*, *>
             val info = decoded["info"] as Map<*, *>
 
-            println("Tracker URL: " + decoded["announce"])
+            val bencodedInfo = bencode.encode(info)
+
+            val hashedInfo = Hashing.sha1().hashBytes(bencodedInfo).asBytes().toHexString()
+            println("Tracker URL: " + StandardCharsets.UTF_8.decode(decoded["announce"] as ByteBuffer).toString())
             println("Length: " + info["length"])
+            println("Info Hash: " + hashedInfo)
             return
         }
 

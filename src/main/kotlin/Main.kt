@@ -33,6 +33,20 @@ fun main(args: Array<String>) {
             println("Tracker URL: " + StandardCharsets.UTF_8.decode(decoded["announce"] as ByteBuffer).toString())
             println("Length: " + info["length"])
             println("Info Hash: " + hashedInfo)
+            println("Piece Length: " + info["piece length"])
+            println("Piece Hashes:")
+            var i = 0
+            val length = 20
+            val pieces = info["pieces"] as ByteBuffer
+            val piecesCount = pieces.capacity() / length
+
+            while (i < piecesCount) {
+                val piece: ByteArray = ByteArray(20)
+                pieces.get(piece, 0, length)
+                println(piece.toHexString())
+                i++
+            }
+
             return
         }
 

@@ -1,12 +1,18 @@
 import com.google.common.hash.Hashing
 import com.google.gson.Gson
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.util.*
+import kotlin.io.encoding.ExperimentalEncodingApi
+
 
 val gson = Gson()
 
-@OptIn(ExperimentalStdlibApi::class)
+@OptIn(ExperimentalStdlibApi::class, ExperimentalEncodingApi::class)
 fun main(args: Array<String>) {
     when (val command = args[0]) {
         "decode" -> {
@@ -18,8 +24,6 @@ fun main(args: Array<String>) {
 
         "info" -> {
             val fileName = args[1]
-//            val file = File(fileName).readText(Charsets.UTF_8)
-//            val decoded = decode(file) as Map<*, *>
 
             val file = File(fileName).inputStream().readBytes()
             val bencode = Bencode()
@@ -46,6 +50,56 @@ fun main(args: Array<String>) {
                 println(piece.toHexString())
                 i++
             }
+
+            return
+        }
+
+        "peers" -> {
+            val fileName = args[1]
+
+            val file = File(fileName).inputStream().readBytes()
+            val bencode = Bencode()
+            val type = bencode.type(file)
+            val decoded = bencode.decode(file, type) as Map<*, *>
+            val info = decoded["info"] as Map<*, *>
+
+            val bencodedInfo = bencode.encode(info)
+
+            val infoHash = Hashing.sha1().hashBytes(bencodedInfo).asBytes()
+            val baseUrl = StandardCharsets.UTF_8.decode(decoded["announce"] as ByteBuffer).toString()
+            val peerId = "12345678901234567890"
+            val port = 6881
+            val uploaded = 0
+            val downloaded = 0
+            val length = info["length"]
+            val compact = 1
+
+            val client = OkHttpClient()
+
+            println(Base64.getUrlEncoder().encodeToString(infoHash))
+            println(kotlin.io.encoding.Base64.encode(infoHash))
+
+            val url = baseUrl
+                .toHttpUrlOrNull()!!
+                .newBuilder()
+                .addQueryParameter("info_hash", "%d6%9f%91%e6%b2%aeLT%24h%d1%07%3aq%d4%ea%13%87%9a%7f")
+                .addQueryParameter("peer_id", peerId)
+                .addQueryParameter("port", port.toString())
+                .addQueryParameter("uploaded", uploaded.toString())
+                .addQueryParameter("downloaded", downloaded.toString())
+                .addQueryParameter("left", length.toString())
+                .addQueryParameter("compact", compact.toString())
+                .toString()
+
+            val request: Request = Request.Builder()
+                .url(url)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val decodedResponse = bencode.decode(response.body.bytes(), type) as Map<*, *>
+                println(StandardCharsets.UTF_8.decode(decodedResponse["failure reason"] as ByteBuffer).toString())
+            }
+
 
             return
         }

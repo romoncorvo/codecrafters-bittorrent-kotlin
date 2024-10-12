@@ -34,6 +34,10 @@ fun decode(input: String): Any {
             decodeList(MutableString(input))
         }
 
+        input[0] == 'd' -> {
+            decodeDictionary(MutableString(input))
+        }
+
         else -> throw RuntimeException("Exception thrown during decoding")
     }
 }
@@ -51,13 +55,32 @@ private fun decodeString(input: String): String {
 
 private fun decodeList(input: MutableString): List<Any> {
     input.value = input.value.substring(1)
-    val result: MutableList<Any> = ArrayList()
+    val result = mutableListOf<Any>()
 
     while (input.value.isNotEmpty() && input.value[0] != 'e') {
         val element = decode(input.value)
         result.add(element)
         val encodedEl = encode(element)
         input.value = input.value.substring(encodedEl.length)
+    }
+
+    return result
+}
+
+private fun decodeDictionary(input: MutableString): Map<String, Any> {
+    input.value = input.value.substring(1)
+    val result = mutableMapOf<String, Any>()
+
+    while (input.value.isNotEmpty() && input.value[0] != 'e') {
+        val key = decode(input.value) as String
+        val encodedKeyEl = encode(key)
+        input.value = input.value.substring(encodedKeyEl.length)
+
+        val value = decode(input.value)
+        val encodedValEl = encode(value)
+        input.value = input.value.substring(encodedValEl.length)
+
+        result[key] = value
     }
 
     return result
@@ -74,7 +97,11 @@ private fun encode(input: Any?): String {
         }
 
         is List<*> -> {
-            "l${input.joinToString { x -> encode(x) }}e"
+            "l${input.joinToString(separator = "") { x -> encode(x) }}e"
+        }
+
+        is Map<*, *> -> {
+            "d${input.entries.joinToString(separator = "") { x -> encode(x.key) + encode(x.value) }}e"
         }
 
         else -> throw RuntimeException("Exception thrown during decoding")

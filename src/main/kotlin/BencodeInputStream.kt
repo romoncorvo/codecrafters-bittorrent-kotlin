@@ -2,14 +2,10 @@ import java.io.*
 import java.math.BigDecimal
 
 
-class BencodeInputStream : FilterInputStream {
+class BencodeInputStream(`in`: InputStream) :
+    FilterInputStream(PushbackInputStream(`in`)) {
 
     private val pis: PushbackInputStream = (super.`in` as PushbackInputStream)
-    private val useBytes: Boolean
-
-    constructor(`in`: InputStream, useBytes: Boolean = false) : super(PushbackInputStream(`in`)) {
-        this.useBytes = useBytes
-    }
 
     private fun peek(): Int {
         val b = pis.read()
@@ -105,6 +101,7 @@ class BencodeInputStream : FilterInputStream {
         if (type === Type.STRING) return readString()
         if (type === Type.NUMBER) return readNumber()
         if (type === Type.LIST) return readList()
+        if (type === Type.DICTIONARY) return readDictionary()
 
         throw InvalidObjectException("Unexpected token '" + String(Character.toChars(token)) + "'")
     }
@@ -120,7 +117,7 @@ class BencodeInputStream : FilterInputStream {
 
     @Throws(EOFException::class)
     private fun checkEOF(b: Int) {
-        if (b == BencodeInputStream.Companion.EOF) throw EOFException()
+        if (b == EOF) throw EOFException()
     }
 
     companion object {

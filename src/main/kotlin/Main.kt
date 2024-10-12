@@ -1,4 +1,5 @@
 import com.google.gson.Gson
+import java.io.File
 
 
 // import com.dampcake.bencode.Bencode; - available if you need it!
@@ -6,13 +7,25 @@ import com.google.gson.Gson
 val gson = Gson()
 
 fun main(args: Array<String>) {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
     when (val command = args[0]) {
         "decode" -> {
-            // Uncomment this block to pass the first stage
             val bencodedValue = args[1]
             val decoded = decode(bencodedValue)
             println(gson.toJson(decoded))
+            return
+        }
+
+        "info" -> {
+            val fileName = args[1]
+            val file = File(fileName).inputStream().readBytes()
+
+            val bencode = Bencode()
+            val type = bencode.type(file)
+            val decoded = bencode.decode(file, type) as Map<*, *>
+            val info = decoded["info"] as Map<*, *>
+
+            println("Tracker URL: " + decoded["announce"])
+            println("Length: " + info["length"])
             return
         }
 

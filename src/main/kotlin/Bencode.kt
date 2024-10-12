@@ -1,13 +1,7 @@
-
 import java.io.ByteArrayInputStream
-import java.nio.charset.Charset
 
 
 class Bencode {
-
-    private val charset: Charset? = null
-    private val useBytes = false
-
     fun type(bytes: ByteArray?): Type<*> {
         if (bytes == null) throw java.lang.NullPointerException("bytes cannot be null")
 
@@ -20,6 +14,7 @@ class Bencode {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun <T> decode(bytes: ByteArray?, type: Type<T>?): T {
         if (bytes == null) throw NullPointerException("bytes cannot be null")
         if (type == null) throw NullPointerException("type cannot be null")
@@ -30,6 +25,7 @@ class Bencode {
         try {
             if (type == Type.NUMBER) return `in`.readNumber() as T
             if (type == Type.LIST) return `in`.readList() as T
+            if (type == Type.DICTIONARY) return `in`.readDictionary() as T
             return `in`.readString() as T
         } catch (t: Throwable) {
             throw BencodeException("Exception thrown during decoding", t)

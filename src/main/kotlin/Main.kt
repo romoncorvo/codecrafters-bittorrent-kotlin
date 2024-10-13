@@ -1,5 +1,9 @@
 import com.google.common.hash.Hashing
 import com.google.gson.Gson
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
+import io.ktor.utils.io.*
+import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -123,6 +127,42 @@ suspend fun main(args: Array<String>) {
 
                 return
             }
+        }
+
+        "handshake" -> {
+            val fileName = args[1]
+            val hostAndPort = args[2].split(":")
+
+            val file = File(fileName).inputStream().readBytes()
+            val bencode = Bencode()
+            val type = bencode.type(file)
+            val decoded = bencode.decode(file, type) as Map<*, *>
+            val info = decoded["info"] as Map<*, *>
+
+            val bencodedInfo = bencode.encode(info)
+
+            val infoHash = Hashing.sha1().hashBytes(bencodedInfo).asBytes()
+            val peerId = "12345678901234567890"
+
+            val selectorManager = SelectorManager(Dispatchers.IO)
+            val socket = aSocket(selectorManager).tcp().connect(hostAndPort[0], hostAndPort[1].toInt())
+
+            val input = socket.openReadChannel()
+            val output = socket.openWriteChannel(autoFlush = true)
+
+            var message: ByteArray = ByteArray(1)
+
+            message[0] = 19.toByte()
+            message += "BitTorrent protocol".toByteArray()
+            message = message.copyOf(28)
+            message += infoHash
+            message += peerId.toByteArray()
+
+            output.writeFully(message)
+
+            println("Peer ID: ${input.toByteArray().copyOfRange(48, 68).toHexString()}")
+
+            return
         }
 
         else -> println("Unknown command $command")

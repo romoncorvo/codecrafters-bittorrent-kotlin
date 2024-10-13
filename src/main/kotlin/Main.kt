@@ -4,16 +4,17 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.util.*
+import kotlin.collections.set
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 
 val gson = Gson()
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalEncodingApi::class)
-fun main(args: Array<String>) {
+suspend fun main(args: Array<String>) {
     when (val command = args[0]) {
         "decode" -> {
             val bencodedValue = args[1]
@@ -74,15 +75,16 @@ fun main(args: Array<String>) {
             val length = info["length"]
             val compact = 1
 
-            val client = OkHttpClient()
+            val urlEncodedInfoHash = infoHash.joinToString("") { byte ->
+                String.format("%%%02x", byte.toInt() and 0xFF)
+            }
 
-            println(Base64.getUrlEncoder().encodeToString(infoHash))
-            println(kotlin.io.encoding.Base64.encode(infoHash))
+            val client = OkHttpClient()
 
             val url = baseUrl
                 .toHttpUrlOrNull()!!
                 .newBuilder()
-                .addQueryParameter("info_hash", "%d6%9f%91%e6%b2%aeLT%24h%d1%07%3aq%d4%ea%13%87%9a%7f")
+                .addEncodedQueryParameter("info_hash", urlEncodedInfoHash)
                 .addQueryParameter("peer_id", peerId)
                 .addQueryParameter("port", port.toString())
                 .addQueryParameter("uploaded", uploaded.toString())
@@ -97,15 +99,45 @@ fun main(args: Array<String>) {
 
             client.newCall(request).execute().use { response ->
                 val decodedResponse = bencode.decode(response.body.bytes(), type) as Map<*, *>
-                println(StandardCharsets.UTF_8.decode(decodedResponse["failure reason"] as ByteBuffer).toString())
+
+                var i = 0
+                val peers = decodedResponse["peers"] as ByteBuffer
+                val peersCount = peers.capacity() / 6
+
+                while (i < peersCount) {
+                    val peerIpAddress: ByteArray = ByteArray(4)
+                    val peerPort: ByteArray = ByteArray(2)
+
+                    peers.get(peerIpAddress, 0, 4)
+                    peers.get(peerPort, 0, 2)
+
+                    println(
+                        "${
+                            InetAddress.getByAddress(peerIpAddress).hostAddress
+                        }:${
+                            ByteBuffer.wrap(peerPort).short.toInt() and 0xFFFF
+                        }"
+                    )
+                    i++
+                }
+
+                return
             }
-
-
-            return
         }
 
         else -> println("Unknown command $command")
     }
+}
+
+fun bytesToUInt16(byteArray: ByteArray): Int {
+    // Ensure the byte array has at least 2 bytes
+    require(byteArray.size >= 2) { "Byte array must contain at least 2 bytes." }
+
+    // Create a ByteBuffer from the byte array
+    val buffer = ByteBuffer.wrap(byteArray)
+
+    // Read the unsigned 16-bit integer in big-endian order
+    return buffer.short.toInt() and 0xFFFF
 }
 
 fun decode(input: String): Any {
